@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SQL-тренажёр</title>
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+:root {
+  --bg: #eef1f4; --panel: #ffffff; --ink: #17202b; --muted: #5d6b7a; --line: #d5dce4; --chip: #e2e8ef;
+  --accent: #1f5fbf; --accent-ink: #fff; --ok: #1d7a4a; --bad: #b3382c; --warn: #a86a00;
+  --editor: #fbfcfd; --null: #8b97a5; --sel: #dce8fb;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141a; --panel: #18202a; --ink: #e6ecf2; --muted: #93a2b2; --line: #2a3644; --chip: #222c38;
+    --accent: #6ea4f0; --accent-ink: #0b1220; --ok: #5cc48e; --bad: #ef7b6f; --warn: #e0a640;
+    --editor: #121922; --null: #6b7888; --sel: #22344d; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141a; --panel: #18202a; --ink: #e6ecf2; --muted: #93a2b2; --line: #2a3644; --chip: #222c38;
+  --accent: #6ea4f0; --accent-ink: #0b1220; --ok: #5cc48e; --bad: #ef7b6f; --warn: #e0a640;
+  --editor: #121922; --null: #6b7888; --sel: #22344d; color-scheme: dark;
+}
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+a { color: var(--accent); }
+.top { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+.top h1 { font-size: 1rem; margin: 0; flex: 1; }
+.top .pg { font: 500 .8rem var(--mono); color: var(--muted); }
+.layout { display: grid; grid-template-columns: 290px 1fr; gap: 12px; padding: 12px 16px 24px; max-width: 1280px; margin: 0 auto; }
+.side, .main > section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.side { padding: 10px; align-self: start; position: sticky; top: 58px; max-height: calc(100vh - 70px); overflow: auto; }
+.side h2 { font: 600 .72rem var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 8px 4px 6px; }
+.tasks button { display: flex; width: 100%; gap: 8px; align-items: baseline; text-align: left; background: none; border: 0; color: var(--ink); font: inherit; font-size: .88rem; padding: 6px 6px; border-radius: 6px; cursor: pointer; }
+.tasks button:hover { background: var(--chip); }
+.tasks button[aria-current="true"] { background: var(--sel); }
+.tasks .mark { width: 1.2em; flex: none; color: var(--muted); }
+.tasks .mark.ok { color: var(--ok); }
+.tasks .topic { font: 600 .7rem var(--mono); color: var(--muted); margin: 10px 6px 2px; text-transform: uppercase; letter-spacing: .05em; }
+details.tbl summary { cursor: pointer; font: 500 .85rem var(--mono); padding: 4px 6px; border-radius: 6px; list-style: none; }
+details.tbl summary::before { content: "▸ "; color: var(--muted); }
+details.tbl[open] summary::before { content: "▾ "; }
+details.tbl summary:hover { background: var(--chip); }
+details.tbl ul { margin: 0 0 6px 22px; padding: 0; list-style: none; font: .78rem var(--mono); color: var(--muted); }
+details.tbl li { padding: 1px 0; cursor: pointer; }
+details.tbl li b { color: var(--ink); font-weight: 500; }
+.main { display: grid; gap: 12px; min-width: 0; }
+.task { padding: 14px 16px; }
+.task .meta { font: 600 .72rem var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.task h3 { margin: 4px 0 6px; font-size: 1.05rem; }
+.task p { margin: 0 0 6px; }
+.task .cols { font: .8rem var(--mono); color: var(--muted); }
+.note { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--chip); font-size: .9rem; }
+.note code, .sol { font-family: var(--mono); font-size: .85rem; }
+.sol { white-space: pre-wrap; display: block; margin-top: 4px; }
+.ed { padding: 0; overflow: hidden; }
+.ed .tabbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); font: .78rem var(--mono); color: var(--muted); }
+.ed .tabbar .f { flex: 1; }
+textarea { display: block; width: 100%; min-height: 170px; resize: vertical; border: 0; outline: none; padding: 12px 14px; background: var(--editor); color: var(--ink); font: 14px/1.55 var(--mono); tab-size: 2; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 .88rem var(--body); padding: 9px 14px; border-radius: 8px; cursor: pointer; min-height: 40px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible, textarea:focus-visible, .tasks button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.res { padding: 0; overflow: hidden; }
+.res .head { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); font: .8rem var(--mono); color: var(--muted); }
+.res .head .f { flex: 1; }
+.verdict { padding: 10px 12px; font-weight: 600; border-bottom: 1px solid var(--line); }
+.verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); }
+.err { padding: 10px 12px; color: var(--bad); font: .85rem var(--mono); white-space: pre-wrap; }
+.grid { overflow: auto; max-height: 420px; }
+table { border-collapse: collapse; font: .82rem var(--mono); min-width: 100%; }
+th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 4px 10px; text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--chip); font-weight: 600; }
+td.n, th.n { color: var(--muted); text-align: right; background: var(--chip); }
+td.null { color: var(--null); font-style: italic; }
+td.num { text-align: right; }
+.loading { padding: 40px 16px; text-align: center; color: var(--muted); }
+kbd { font: .75rem var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+.mobile-only { display: none; }
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; padding: 10px 12px 24px; }
+  .side { position: static; max-height: none; }
+  .side.collapsed .body { display: none; }
+  .mobile-only { display: inline-block; }
+  textarea { min-height: 150px; font-size: 15px; }
+  .btn { flex: 1 1 auto; }
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <a href="../#read" aria-label="Назад к карточкам">←</a>
+  <h1>SQL-тренажёр · PostgreSQL</h1>
+  <span class="pg" id="progress"></span>
+</div>
+<div id="boot" class="loading">Запускаю PostgreSQL в браузере… <br><small>Первый раз — до минуты, потом быстрее.</small></div>
+<div class="layout" id="app" hidden>
+  <aside class="side" id="side">
+    <button class="btn mobile-only" id="toggleSide" type="button">Задачи и схема ▾</button>
+    <div class="body">
+      <h2>Задачи</h2>
+      <div class="tasks" id="tasks"></div>
+      <h2>База: сеть магазинов</h2>
+      <div id="schema"></div>
+    </div>
+  </aside>
+  <div class="main">
+    <section class="task" id="task"></section>
+    <section class="ed">
+      <div class="tabbar"><span class="f" id="edTitle">query.sql</span><span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> — выполнить</span></div>
+      <textarea id="sql" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="SQL-запрос"></textarea>
+      <div class="actions">
+        <button class="btn primary" id="check" type="button">✓ Проверить</button>
+        <button class="btn" id="run" type="button">▶ Выполнить</button>
+        <button class="btn" id="hint" type="button">💡 Подсказка</button>
+        <button class="btn" id="show" type="button">👁 Решение</button>
+      </div>
+    </section>
+    <section class="res" id="res" hidden></section>
+  </div>
+</div>
+
+<script type="module">
+import { PGlite, types } from "./pglite/index.js";
+import { SEED, TASKS } from "./tasks.js";
+
+// ---------- состояние (в браузере, на этом устройстве)
+const KEY = "sql-trainer-v1";
+let state = { solved: {}, peeked: {}, drafts: {}, current: TASKS[0].id };
+try { state = { ...state, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const FREE = { id: "free", topic: "Песочница", level: 0, title: "Свободный запрос", text: "Пишите любые запросы к учебной базе. Все изменения данных откатываются." };
+
+// ---------- база: даты и числа приходят строками, чтобы не зависеть от часового пояса
+const asText = v => v;
+const db = new PGlite({ parsers: { [types.DATE]: asText, [types.TIMESTAMP]: asText, [types.TIMESTAMPTZ]: asText, [types.NUMERIC]: asText } });
+await db.exec(SEED);
+
+// любой запрос выполняется в транзакции и откатывается — база всегда остаётся исходной
+async function runSql(sql, check) {
+  const t0 = performance.now();
+  await db.query("BEGIN");
+  try {
+    const all = await db.exec(sql);
+    let last = [...all].reverse().find(r => r.fields && r.fields.length) || null;
+    const affected = all.reduce((n, r) => n + (r.affectedRows || 0), 0);
+    if (check) last = await db.query(check);
+    return { result: last, affected, ms: Math.round(performance.now() - t0) };
+  } finally {
+    await db.query("ROLLBACK");
+  }
+}
+
+// ---------- сравнение результата с эталоном
+const norm = v => {
+  if (v === null || v === undefined) return "∅";
+  if (typeof v === "number") return (Math.round(v * 100) / 100).toString();
+  if (typeof v === "boolean") return v ? "t" : "f";
+  const s = String(v).trim();
+  if (/^-?\d+(\.\d+)?$/.test(s)) return (Math.round(Number(s) * 100) / 100).toString();
+  if (/^\d{4}-\d{2}-\d{2}( 00:00:00)?$/.test(s)) return s.slice(0, 10);
+  return s;
+};
+const rowsOf = r => (r ? r.rows.map(row => r.fields.map(f => norm(row[f.name]))) : []);
+const key = row => JSON.stringify(row);
+
+function compare(user, expected, ordered) {
+  const ue = user ? user.fields.length : 0, ee = expected.fields.length;
+  if (!user) return "Запрос ничего не вернул. Нужен SELECT (или изменение данных для задачи на изменение).";
+  if (ue !== ee) return `Столбцов: ${ue}, а нужно ${ee}. Ожидаемые столбцы: ${expected.fields.map(f => f.name).join(", ")}.`;
+  let a = rowsOf(user), b = rowsOf(expected);
+  if (a.length !== b.length) return `Строк: ${a.length}, а должно быть ${b.length}.`;
+  if (!ordered) { a = a.map(key).sort(); b = b.map(key).sort(); }
+  else { a = a.map(key); b = b.map(key); }
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      if (ordered && [...a].sort().join() === [...b].sort().join()) return "Строки правильные, но порядок другой. В этой задаче порядок важен.";
+      return `Количество строк совпало, но значения отличаются (первое расхождение — строка ${i + 1}).`;
+    }
+  }
+  return null;
+}
+
+// ---------- интерфейс
+const allTasks = [FREE, ...TASKS];
+const byId = id => allTasks.find(t => t.id === id) || TASKS[0];
+
+function renderTasks() {
+  const box = $("tasks"); box.textContent = "";
+  let topic = null;
+  for (const t of allTasks) {
+    if (t.topic !== topic) { topic = t.topic; box.appendChild(el("div", "topic", topic)); }
+    const b = el("button");
+    b.type = "button";
+    const mark = el("span", "mark" + (state.solved[t.id] ? " ok" : ""), t.id === "free" ? "✎" : state.solved[t.id] ? "✓" : "○");
+    b.append(mark, el("span", null, t.title));
+    if (t.id === state.current) b.setAttribute("aria-current", "true");
+    b.addEventListener("click", () => { openTask(t.id); if (matchMedia("(max-width: 820px)").matches) $("side").classList.add("collapsed"); });
+    box.appendChild(b);
+  }
+  const done = TASKS.filter(t => state.solved[t.id]).length;
+  $("progress").textContent = `${done} / ${TASKS.length}`;
+}
+
+async function renderSchema() {
+  const cols = (await db.query(`SELECT table_name, column_name, data_type, is_nullable FROM information_schema.columns
+    WHERE table_schema = 'public' ORDER BY table_name, ordinal_position`)).rows;
+  const counts = {};
+  for (const t of [...new Set(cols.map(c => c.table_name))]) counts[t] = (await db.query(`SELECT count(*)::int n FROM ${t}`)).rows[0].n;
+  const box = $("schema"); box.textContent = "";
+  for (const t of Object.keys(counts)) {
+    const d = el("details", "tbl");
+    const s = el("summary", null, `${t} (${counts[t]})`);
+    const ul = el("ul");
+    for (const c of cols.filter(c => c.table_name === t)) {
+      const li = el("li");
+      li.append(el("b", null, c.column_name), document.createTextNode(` ${c.data_type.replace("character varying", "text")}${c.is_nullable === "YES" ? "" : " not null"}`));
+      li.title = "Вставить в запрос";
+      li.addEventListener("click", () => insert(c.column_name));
+      ul.appendChild(li);
+    }
+    s.addEventListener("dblclick", () => insert(t));
+    d.append(s, ul); box.appendChild(d);
+  }
+}
+
+function insert(text) {
+  const ta = $("sql"); const { selectionStart: a, selectionEnd: b, value } = ta;
+  ta.value = value.slice(0, a) + text + value.slice(b);
+  ta.focus(); ta.selectionStart = ta.selectionEnd = a + text.length; draft();
+}
+
+const expectedCache = {};
+async function expected(t) {
+  if (!expectedCache[t.id]) expectedCache[t.id] = (await runSql(t.solution, t.check)).result;
+  return expectedCache[t.id];
+}
+
+async function openTask(id) {
+  const t = byId(id); state.current = t.id; save(); renderTasks();
+  const box = $("task"); box.textContent = "";
+  box.append(el("div", "meta", t.id === "free" ? "песочница" : `${t.topic} · ${"★".repeat(t.level)}${"☆".repeat(3 - t.level)}${t.ordered ? " · порядок важен" : ""}`));
+  box.append(el("h3", null, t.title), el("p", null, t.text));
+  if (t.id !== "free") {
+    const cols = el("div", "cols", "Ожидаемые столбцы: …"); box.appendChild(cols);
+    expected(t).then(r => { cols.textContent = t.check ? "Проверяется итоговое состояние данных" : `Ожидаемые столбцы: ${r.fields.length} (${r.fields.map(f => f.name).join(", ")}) · строк: ${r.rows.length}`; });
+  }
+  $("edTitle").textContent = `${t.id}.sql`;
+  $("sql").value = state.drafts[t.id] ?? (t.id === "free" ? "SELECT * FROM orders LIMIT 20;" : "");
+  for (const b of ["check", "hint", "show"]) $(b).hidden = t.id === "free";
+  $("res").hidden = true;
+}
+
+function draft() { state.drafts[state.current] = $("sql").value; save(); }
+
+function renderResult(r, verdict) {
+  const box = $("res"); box.hidden = false; box.textContent = "";
+  if (verdict) box.appendChild(verdict);
+  if (r.error) { box.appendChild(el("div", "err", r.error)); return; }
+  const res = r.result;
+  const head = el("div", "head");
+  head.append(el("span", "f", res ? `строк: ${res.rows.length}` : r.affected ? `изменено строк: ${r.affected} (откатится)` : "выполнено"), el("span", null, `${r.ms} мс`));
+  box.appendChild(head);
+  if (!res) return;
+  const grid = el("div", "grid"), table = el("table"), thead = el("tr");
+  thead.appendChild(el("th", "n", "#"));
+  for (const f of res.fields) thead.appendChild(el("th", null, f.name));
+  table.appendChild(thead);
+  res.rows.slice(0, 300).forEach((row, i) => {
+    const tr = el("tr"); tr.appendChild(el("td", "n", String(i + 1)));
+    for (const f of res.fields) {
+      const v = row[f.name];
+      const td = el("td", v === null ? "null" : (typeof v === "number" || /^-?\d+(\.\d+)?$/.test(String(v)) ? "num" : null), v === null ? "NULL" : String(v));
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  });
+  grid.appendChild(table); box.appendChild(grid);
+  if (res.rows.length > 300) box.appendChild(el("div", "head", `показаны первые 300 из ${res.rows.length}`));
+}
+
+async function exec(doCheck) {
+  const t = byId(state.current), sql = $("sql").value.trim();
+  if (!sql) return;
+  for (const b of ["run", "check"]) $(b).disabled = true;
+  let r;
+  try { r = await runSql(sql, doCheck ? t.check : null); }
+  catch (e) { r = { error: e.message }; }
+  let verdict = null;
+  if (doCheck && !r.error) {
+    const problem = compare(r.result, await expected(t), t.ordered);
+    verdict = el("div", "verdict " + (problem ? "bad" : "ok"), problem ? "✗ " + problem : state.peeked[t.id] ? "✓ Верно (после подсказки решения — в зачёт, но попробуйте завтра сами)" : "✓ Верно!");
+    if (!problem) { state.solved[t.id] = true; save(); renderTasks(); }
+  }
+  renderResult(r, verdict);
+  for (const b of ["run", "check"]) $(b).disabled = false;
+  $("res").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function note(html) {
+  const old = $("task").querySelector(".note"); if (old) old.remove();
+  const n = el("div", "note"); n.append(...html); $("task").appendChild(n);
+}
+
+$("run").addEventListener("click", () => exec(false));
+$("check").addEventListener("click", () => exec(true));
+$("hint").addEventListener("click", () => note([el("b", null, "Подсказка: "), document.createTextNode(byId(state.current).hint)]));
+$("show").addEventListener("click", () => {
+  const t = byId(state.current);
+  if (!state.peeked[t.id] && !confirm("Показать решение? Задачу всё равно можно будет сдать.")) return;
+  state.peeked[t.id] = true; save();
+  note([el("b", null, "Одно из решений:"), el("code", "sol", t.solution)]);
+});
+$("sql").addEventListener("input", draft);
+$("sql").addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); exec(byId(state.current).id !== "free"); }
+  if (e.key === "Tab") { e.preventDefault(); insert("  "); }
+});
+$("toggleSide").addEventListener("click", () => $("side").classList.toggle("collapsed"));
+if (matchMedia("(max-width: 820px)").matches) $("side").classList.add("collapsed");
+
+await renderSchema();
+renderTasks();
+await openTask(state.current);
+$("boot").hidden = true; $("app").hidden = false;
+window.__ready = true;
+</script>
+</body>
+</html>
